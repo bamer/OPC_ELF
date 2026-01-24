@@ -1,5 +1,5 @@
-# Ignore EmergentXXXXXXXXXXXXX-_ELF directory
-.EmergentXXXXXXXXXXXXX-_ELF/
+# Ignore Emergent-Learning-Framework_ELF
+Emergent-Learning-Framework_ELF
 
 # Ignore backup directory
 backup/
