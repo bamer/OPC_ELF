@@ -21,7 +21,10 @@ import { existsSync, promises as fs } from "fs";
 const HOME_DIR = os.homedir();
 const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
 const ELF_DIR = process.env.ELF_BASE_PATH || path.join(OPENCODE_DIR, "emergent-learning");
-const SCRIPT_DIR = path.join(OPENCODE_DIR, "scripts");
+const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
+const DASHBOARD_FALLBACK_DIR = path.join(ELF_DIR, "apps", "dashboard");
+const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");
+const TALKINHEAD_FALLBACK_DIR = path.join(DASHBOARD_FALLBACK_DIR, "TalkinHead");
 const HOOKS_DIR = path.join(ELF_DIR, "hooks", "learning-loop");
 const QUERY_DIR = path.join(ELF_DIR, "query");
 const ELF_CLEANUP_CONFIG_PATH = path.join(ELF_DIR, "elf_cleanup_config.json");
@@ -62,10 +65,12 @@ const POST_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "pos
 // ELF command paths
 const CHECKIN_QUERY = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "query.py"))} --context`;
 // Lifecycle scripts for Dashboard/IVI
-const DASHBOARD_START_SCRIPT = quote(path.join(SCRIPT_DIR, "start-dashboard.sh"));
-const TALKING_HEAD_IVI_START_SCRIPT = quote(path.join(SCRIPT_DIR, "start-talking-head-ivi.sh"));
-const DASHBOARD_STOP_SCRIPT = quote(path.join(SCRIPT_DIR, "stop-dashboard.sh"));
-const TALKING_HEAD_IVI_STOP_SCRIPT = quote(path.join(SCRIPT_DIR, "stop-talking-head-ivi.sh"));
+const DASHBOARD_START_SCRIPT = `bash -lc "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}"`;
+const DASHBOARD_START_FALLBACK_SCRIPT = `bash -lc "${path.join(DASHBOARD_FALLBACK_DIR, "run-dashboard.sh")}"`;
+const TALKING_HEAD_IVI_START_SCRIPT = `bash -lc "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}"`;
+const TALKING_HEAD_IVI_START_FALLBACK_SCRIPT = `bash -lc "${path.join(TALKINHEAD_FALLBACK_DIR, "run-talkinhead.sh")}"`;
+const DASHBOARD_STOP_SCRIPT = "bash -lc \"pkill -f run-dashboard.sh || true\"";
+const TALKING_HEAD_IVI_STOP_SCRIPT = "bash -lc \"pkill -f TalkinHead || true\"";
 const CHECKOUT_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "checkout.py"))}`;
 
 // Track session state
@@ -229,8 +234,8 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
               if (lock?.startedSessionId === sessionId) {
                 await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard/IVI already started for this session. Skipping start." });
               } else {
-                const dashCmd = `bash -lc ${DASHBOARD_START_SCRIPT} &`;
-                const thCmd = `bash -lc ${TALKING_HEAD_IVI_START_SCRIPT} &`;
+                const dashCmd = `if [ -x "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}" ]; then ${DASHBOARD_START_SCRIPT}; else ${DASHBOARD_START_FALLBACK_SCRIPT}; fi &`;
+                const thCmd = `if [ -x "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}" ]; then ${TALKING_HEAD_IVI_START_SCRIPT}; else ${TALKING_HEAD_IVI_START_FALLBACK_SCRIPT}; fi &`;
                 await $`${dashCmd}`.quiet();
                 await $`${thCmd}`.quiet();
                 await saveDashboardIvIlock({ startedSessionId: sessionId });

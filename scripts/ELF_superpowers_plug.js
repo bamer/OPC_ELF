@@ -14,8 +14,35 @@
  */
 
 import { tool } from "@opencode-ai/plugin";
-import { promises as fs } from 'fs';
-const ELF_CLEANUP_CONFIG_PATH = "/home/bamer/.opencode/emergent-learning/elf_cleanup_config.json";
+import os from "os";
+import path from "path";
+import { existsSync, promises as fs } from "fs";
+
+const HOME_DIR = os.homedir();
+const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
+const ELF_DIR = process.env.ELF_BASE_PATH || path.join(OPENCODE_DIR, "emergent-learning");
+const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
+const DASHBOARD_FALLBACK_DIR = path.join(ELF_DIR, "apps", "dashboard");
+const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");
+const TALKINHEAD_FALLBACK_DIR = path.join(DASHBOARD_FALLBACK_DIR, "TalkinHead");
+const HOOKS_DIR = path.join(ELF_DIR, "hooks", "learning-loop");
+const QUERY_DIR = path.join(ELF_DIR, "query");
+const ELF_CLEANUP_CONFIG_PATH = path.join(ELF_DIR, "elf_cleanup_config.json");
+const DASHBOARD_IVI_LOCK_PATH = path.join(ELF_DIR, "elf_dashboard_ivi_lock.json");
+
+const quote = (value) => `"${value}"`;
+const pickPython = () => {
+  const candidates = [
+    process.env.ELF_PYTHON,
+    path.join(ELF_DIR, ".venv", "bin", "python"),
+    path.join(ELF_DIR, ".venv", "Scripts", "python.exe"),
+    "python3",
+    "python"
+  ].filter(Boolean);
+  return candidates.find((candidate) => existsSync(candidate)) || "python";
+};
+
+const PYTHON_CMD = pickPython();
 async function loadElfCleanupConfig() {
   try {
     const data = await fs.readFile(ELF_CLEANUP_CONFIG_PATH, "utf8");
@@ -32,19 +59,19 @@ async function saveElfCleanupConfig(cfg) {
   return true;
 }
 
-const PRE_TOOL_SCRIPT = "\"/home/bamer/.opencode/emergent-learning/.venv/bin/python\" \"/home/bamer/.opencode/emergent-learning/hooks/learning-loop/pre_tool_learning.py\"";
-const POST_TOOL_SCRIPT = "\"/home/bamer/.opencode/emergent-learning/.venv/bin/python\" \"/home/bamer/.opencode/emergent-learning/hooks/learning-loop/post_tool_learning.py\"";
+const PRE_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "pre_tool_learning.py"))}`;
+const POST_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "post_tool_learning.py"))}`;
 
 // ELF command paths
- const CHECKIN_QUERY = "\"/home/bamer/.opencode/emergent-learning/.venv/bin/python\" \"/home/bamer/.opencode/emergent-learning/query/query.py\" --context";
+const CHECKIN_QUERY = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "query.py"))} --context`;
 // Lifecycle scripts for Dashboard/IVI
-const DASHBOARD_START_SCRIPT = "\"/home/bamer/.opencode/scripts/start-dashboard.sh\"";
-const TALKING_HEAD_IVI_START_SCRIPT = "\"/home/bamer/.opencode/scripts/start-talking-head-ivi.sh\"";
-const DASHBOARD_STOP_SCRIPT = "\"/home/bamer/.opencode/scripts/stop-dashboard.sh\"";
-const TALKING_HEAD_IVI_STOP_SCRIPT = "\"/home/bamer/.opencode/scripts/stop-talking-head-ivi.sh\"";
-// Auto-cleanup/config for Dashboard/IVI lifecycle
-const DASHBOARD_IVI_LOCK_PATH = "/home/bamer/.opencode/emergent-learning/elf_dashboard_ivi_lock.json";
-const CHECKOUT_SCRIPT = "\"/home/bamer/.opencode/emergent-learning/.venv/bin/python\" \"/home/bamer/.opencode/emergent-learning/query/checkout.py\"";
+const DASHBOARD_START_SCRIPT = `bash -lc "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}"`;
+const DASHBOARD_START_FALLBACK_SCRIPT = `bash -lc "${path.join(DASHBOARD_FALLBACK_DIR, "run-dashboard.sh")}"`;
+const TALKING_HEAD_IVI_START_SCRIPT = `bash -lc "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}"`;
+const TALKING_HEAD_IVI_START_FALLBACK_SCRIPT = `bash -lc "${path.join(TALKINHEAD_FALLBACK_DIR, "run-talkinhead.sh")}"`;
+const DASHBOARD_STOP_SCRIPT = "bash -lc \"pkill -f run-dashboard.sh || true\"";
+const TALKING_HEAD_IVI_STOP_SCRIPT = "bash -lc \"pkill -f TalkinHead || true\"";
+const CHECKOUT_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "checkout.py"))}`;
 
 // Track session state
 let sessionCheckinDone = false;
@@ -207,8 +234,8 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
               if (lock?.startedSessionId === sessionId) {
                 await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard/IVI already started for this session. Skipping start." });
               } else {
-                const dashCmd = `bash -lc ${DASHBOARD_START_SCRIPT} &`;
-                const thCmd = `bash -lc ${TALKING_HEAD_IVI_START_SCRIPT} &`;
+                const dashCmd = `if [ -x "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}" ]; then ${DASHBOARD_START_SCRIPT}; else ${DASHBOARD_START_FALLBACK_SCRIPT}; fi &`;
+                const thCmd = `if [ -x "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}" ]; then ${TALKING_HEAD_IVI_START_SCRIPT}; else ${TALKING_HEAD_IVI_START_FALLBACK_SCRIPT}; fi &`;
                 await $`${dashCmd}`.quiet();
                 await $`${thCmd}`.quiet();
                 await saveDashboardIvIlock({ startedSessionId: sessionId });

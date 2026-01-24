@@ -1,0 +1,17 @@
+--- a/tools/scripts/start-watcher.sh
++++ b/tools/scripts/start-watcher.sh
+@@ -31,9 +31,11 @@
+     echo "Error: Launcher script not found at $LAUNCHER_SCRIPT"
+     exit 1
+ fi
+
+-# Check for ANTHROPIC_API_KEY
+-if [ -z "$ANTHROPIC_API_KEY" ]; then
+-    echo "Error: ANTHROPIC_API_KEY environment variable is not set"
+-    echo "Please set it with: export ANTHROPIC_API_KEY='your-key-here'"
++# Check for ANTHROPIC_API_KEY or OpenAI-compatible base URL
++if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENCODE_WATCHER_BASE_URL" ] && [ -z "$OPENAI_BASE_URL" ]; then
++    echo "Error: ANTHROPIC_API_KEY or OPENCODE_WATCHER_BASE_URL is required"
++    echo "Example: export OPENCODE_WATCHER_BASE_URL='http://localhost:12134/v1'"
+     exit 1
+ fi
