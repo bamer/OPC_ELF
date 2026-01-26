@@ -21,8 +21,8 @@ const HOME_DIR = os.homedir();
 // OpenCode plugin dir (global)
 const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
 // ELF data dir (global, NOT affected by project-local .opencode)
-const ELF_DIR = process.env.ELF_BASE_PATH || path.join(HOME_DIR, ".opencode", "emergent-learning");
-const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
+const ELF_DIR = path.join(HOME_DIR, ".opencode", "emergent-learning");
+const DASHBOARD_DIR = path.join(ELF_DIR, "apps" , "dashboard");
 const DASHBOARD_FALLBACK_DIR = path.join(ELF_DIR, "apps", "dashboard");
 const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");
 const TALKINHEAD_FALLBACK_DIR = path.join(DASHBOARD_FALLBACK_DIR, "TalkinHead");
