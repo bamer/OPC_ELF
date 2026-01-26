@@ -40,9 +40,25 @@ echo "-- Restoring custom files (post-update)"
 
 echo "-- Applying custom patches"
 if bash "$ROOT_DIR/scripts/preserve-customizations.sh" patch 2>&1; then
-  echo "✅ Patches applied"
+  echo "✅ Custom patches applied"
 else
-  echo "⚠️  Patch application reported issues (non-critical, continuing)"
+  echo "⚠️  Custom patch application reported issues (non-critical, continuing)"
+fi
+
+echo "-- Applying Claude→OpenCode cleanup patch"
+if [ -f "$ROOT_DIR/scripts/patches/src-claude-cleanup.patch" ]; then
+  cd "$ELF_REPO"
+  if patch -p1 --dry-run < "$ROOT_DIR/scripts/patches/src-claude-cleanup.patch" > /dev/null 2>&1; then
+    if patch -p1 < "$ROOT_DIR/scripts/patches/src-claude-cleanup.patch" > /dev/null 2>&1; then
+      echo "✅ Claude cleanup patch applied"
+    else
+      echo "⚠️  Claude cleanup patch failed to apply (non-critical)"
+    fi
+  else
+    echo "   Claude cleanup patch already applied or skipped"
+  fi
+else
+  echo "   No Claude cleanup patch found (not critical)"
 fi
 
 echo "-- Cleaning upstream references (Claude → OpenCode)"
@@ -141,6 +157,15 @@ echo "-- Ensuring AGENTS.md exists"
 if [ ! -f "$OPENCODE_DIR/AGENTS.md" ] && [ -f "$OPENCODE_DIR/CLAUDE.md" ]; then
   echo "   Migrating legacy CLAUDE.md → AGENTS.md"
   cp -f "$OPENCODE_DIR/CLAUDE.md" "$OPENCODE_DIR/AGENTS.md"
+fi
+
+echo "-- Cleaning Claude references from installed ELF"
+if [ -d "$ELF_INSTALL_DIR" ]; then
+  bash "$ROOT_DIR/scripts/clean-installed-claude-refs.sh" || {
+    echo "⚠️  Some issues during cleanup (non-critical, continuing)"
+  }
+else
+  echo "   ELF not yet installed, skipping installed cleanup"
 fi
 
 echo "-- Validating OpenCode ELF installation"

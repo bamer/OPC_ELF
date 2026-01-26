@@ -9,6 +9,7 @@
 - **Validate setup**: `./scripts/validate-setup.sh` (optional, for troubleshooting)
 - **Sync** (update + backup + clean + install + plugin): `./scripts/opc-elf-sync.sh`
   - Performs git fetch, resets to upstream, cleans Claude references, applies patches, installs plugin, validates cleanup
+- **Clean installed Claude refs** (if .opencode/emergent-learning still has Claude paths): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/clean-installed-claude-refs.sh`
 - **Fix database** (if integrity issues): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/fix-database.sh`
   - Repairs NULL values in NOT NULL columns, backs up database
 - **Preserve customizations**: `./scripts/preserve-customizations.sh {backup|restore|patch}`
@@ -21,6 +22,7 @@
 
 ## GitHub-Style Patches
 - Patch directory: `scripts/patches/` contains GitHub-style patch files
+- `src-claude-cleanup.patch`: Converts all Claude references to OpenCode paths (`.claude` → `.opencode`, env vars, etc)
 - `launcher-openai.patch`: Adds OpenAI-compatible launcher for watcher
 - `start-watcher-openai.patch`: Adds OpenAI/OpenCode watcher support
 - `opencode-plugin.patch`: Adds OpenCode plugin with ELF hooks
