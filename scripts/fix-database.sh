@@ -40,72 +40,11 @@ cp "$DB_PATH" "$BACKUP_PATH"
 echo "✅ Backup created"
 echo ""
 
-# Fix NULL values in heuristics table using Python
-echo "Fixing heuristics table..."
+# Fix schema using dedicated Python script
+echo "Fixing heuristics table schema..."
 
-python3 << 'PYEOF' || python << 'PYEOF'
-import sqlite3
-import sys
-
-db_path = """$DB_PATH"""
-
-try:
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Check if heuristics table exists
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='heuristics'")
-    table_exists = cursor.fetchone() is not None
-    
-    if not table_exists:
-        print("⚠️  No heuristics table found (database is new)")
-        print("   Table will be created when ELF initializes")
-        conn.close()
-    else:
-        # Fix times_validated
-        cursor.execute("UPDATE heuristics SET times_validated = 0 WHERE times_validated IS NULL")
-        
-        # Fix times_violated
-        cursor.execute("UPDATE heuristics SET times_violated = 0 WHERE times_violated IS NULL")
-        
-        # Fix times_contradicted
-        cursor.execute("UPDATE heuristics SET times_contradicted = 0 WHERE times_contradicted IS NULL")
-        
-        # Fix update_count_today
-        cursor.execute("UPDATE heuristics SET update_count_today = 0 WHERE update_count_today IS NULL")
-        
-        # Fix confidence
-        cursor.execute("UPDATE heuristics SET confidence = 0.5 WHERE confidence IS NULL")
-        
-        # Fix confidence_ema
-        cursor.execute("UPDATE heuristics SET confidence_ema = 0.5 WHERE confidence_ema IS NULL")
-        
-        # Fix status
-        cursor.execute("UPDATE heuristics SET status = 'active' WHERE status IS NULL")
-        
-        # Fix is_golden
-        cursor.execute("UPDATE heuristics SET is_golden = 0 WHERE is_golden IS NULL")
-        
-        conn.commit()
-        
-        # Verify no NULL values remain
-        cursor.execute("SELECT COUNT(*) FROM heuristics WHERE times_validated IS NULL OR times_violated IS NULL OR times_contradicted IS NULL OR domain IS NULL OR rule IS NULL")
-        invalid_rows = cursor.fetchone()[0]
-        
-        # Get statistics
-        cursor.execute("SELECT COUNT(*) FROM heuristics")
-        row_count = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        print("✅ Fixed heuristics table")
-        print("   - Total rows: %d" % row_count)
-        print("   - Invalid rows remaining: %d" % invalid_rows)
-    
-except Exception as e:
-    print("ERROR: Failed to repair database: %s" % str(e))
-    sys.exit(1)
-PYEOF
+SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
+python3 "$SCRIPTS_DIR/fix-heuristics-schema.py"
 
 echo ""
 

@@ -106,10 +106,10 @@ OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh --mod
 }
 
 # Fix database schema if needed (handles old NULL values in NOT NULL columns)
-echo "-- Checking database integrity"
+echo "-- Fixing database schema"
 if [ -f "$ELF_INSTALL_DIR/memory/index.db" ] || [ -f "$ELF_INSTALL_DIR/.env/.sqlite" ]; then
-  echo "   Repairing database schema if needed..."
-  OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" bash "$ROOT_DIR/scripts/fix-database.sh" 2>&1 | grep -E "^(✅|⚠️)" || true
+  echo "   Applying schema fixes..."
+  python3 "$ROOT_DIR/scripts/fix-heuristics-schema.py" 2>&1 | grep -E "^(✅|⚠️|Creating)" || true
   
   # Retry seeding after repair
   echo ""
