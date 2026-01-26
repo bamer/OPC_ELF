@@ -21,10 +21,7 @@ const HOME_DIR = os.homedir();
 // OpenCode plugin dir (global)
 const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
 // ELF data dir (global, NOT affected by project-local .opencode)
-// Try multiple sources in priority order
-const ELF_DIR = process.env.ELF_BASE_PATH || 
-                process.env.ELF_INSTALL_DIR ||
-                path.join(HOME_DIR, ".opencode", "emergent-learning");
+const ELF_DIR = process.env.ELF_BASE_PATH || path.join(HOME_DIR, ".opencode", "emergent-learning");
 const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
 const DASHBOARD_FALLBACK_DIR = path.join(ELF_DIR, "apps", "dashboard");
 const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");
@@ -66,13 +63,16 @@ async function saveElfCleanupConfig(cfg) {
 const PRE_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "pre_tool_learning.py"))}`;
 const POST_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "post_tool_learning.py"))}`;
 
-// Lifecycle scripts for Dashboard/IVI (bash execution)
+// ELF command paths
+const CHECKIN_QUERY = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "query.py"))} --context`;
+// Lifecycle scripts for Dashboard/IVI
 const DASHBOARD_START_SCRIPT = `bash -lc "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}"`;
 const DASHBOARD_START_FALLBACK_SCRIPT = `bash -lc "${path.join(DASHBOARD_FALLBACK_DIR, "run-dashboard.sh")}"`;
 const TALKING_HEAD_IVI_START_SCRIPT = `bash -lc "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}"`;
 const TALKING_HEAD_IVI_START_FALLBACK_SCRIPT = `bash -lc "${path.join(TALKINHEAD_FALLBACK_DIR, "run-talkinhead.sh")}"`;
 const DASHBOARD_STOP_SCRIPT = "bash -lc \"pkill -f run-dashboard.sh || true\"";
 const TALKING_HEAD_IVI_STOP_SCRIPT = "bash -lc \"pkill -f TalkinHead || true\"";
+const CHECKOUT_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "checkout.py"))}`;
 
 // Track session state
 let sessionCheckinDone = false;
@@ -219,8 +219,8 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
         });
 
         try {
-           // Run check-in query to load context
-           const result = await $`${PYTHON_CMD} ${path.join(QUERY_DIR, "query.py")} --context`.quiet();
+          // Run check-in query to load context
+          const result = await $`${CHECKIN_QUERY}`.quiet();
 
         if (result.exitCode === 0) {
             sessionCheckinDone = true;
@@ -337,7 +337,7 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
           }
 
           // Run checkout to capture learnings before compaction
-          const result = await $`${PYTHON_CMD} ${path.join(QUERY_DIR, "checkout.py")} --auto`.quiet();
+          const result = await $`${CHECKOUT_SCRIPT} --auto`.quiet();
 
           await client.app.log({
             service: "elf-hooks",
@@ -403,7 +403,7 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
             }
 
             // Final checkout to ensure all learnings are captured
-            const result = await $`${PYTHON_CMD} ${path.join(QUERY_DIR, "checkout.py")} --auto --final`.quiet();
+            const result = await $`${CHECKOUT_SCRIPT} --auto --final`.quiet();
 
             await client.app.log({
               service: "elf-hooks",
@@ -449,22 +449,15 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
         args: {},
         execute: async (args, ctx) => {
           try {
-            const queryScript = path.join(QUERY_DIR, "query.py");
-            
-            // Check if script exists
-            if (!existsSync(queryScript)) {
-              return `❌ Check-In error: query.py not found at ${queryScript}\n\nELF_DIR detected as: ${ELF_DIR}`;
-            }
-            
-            const result = await $`${PYTHON_CMD} ${queryScript} --context`.quiet();
+            const result = await $`${CHECKIN_QUERY}`.quiet();
             if (result.exitCode === 0) {
               sessionCheckinDone = true;
-              return "✅ Check-in complete. Context, golden rules, and heuristics loaded from the building. Ready to apply learnings to your task.";
+              return "✅ ELF Check-In Complete\nContext, golden rules, and heuristics loaded from the building.";
             } else {
-              return `❌ Check-in failed (exit code ${result.exitCode}). Check logs for details.`;
+              return `⚠️ Check-In exited with code: ${result.exitCode}\nCheck OpenCode logs for details.`;
             }
           } catch (error) {
-            return `❌ Check-In error: ${error.message}\n\nELF_DIR: ${ELF_DIR}\nQUERY_DIR: ${QUERY_DIR}`;
+            return `❌ Check-In error: ${error.message}`;
           }
         }
       }),
@@ -475,14 +468,10 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
           final: tool.schema.boolean().describe("Mark this as final checkout before session ends").optional()
         },
         execute: async (args, ctx) => {
+          const flags = args.final ? " --final" : "";
           try {
-            const flags = args.final ? ["--final"] : [];
-            const result = await $`${PYTHON_CMD} ${path.join(QUERY_DIR, "checkout.py")} ${flags}`.quiet();
-            if (result.exitCode === 0) {
-              return `✅ ELF Check-Out Complete\nLearnings recorded.`;
-            } else {
-              return `⚠️ Check-Out exited with code: ${result.exitCode}\nstderr: ${result.stderr || 'none'}`;
-            }
+            const result = await $`${CHECKOUT_SCRIPT}${flags}`.quiet();
+            return `✅ ELF Check-Out Complete\nLearnings recorded. (exit code: ${result.exitCode})`;
           } catch (error) {
             return `❌ Check-Out error: ${error.message}`;
           }
