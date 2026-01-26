@@ -61,7 +61,7 @@ else
   echo "   No Claude cleanup patch found (not critical)"
 fi
 
-echo "-- Cleaning upstream references (Claude → OpenCode)"
+echo "-- Cleaning upstream references (Claude → OpenCode, .claude → .opencode)"
 
 # Clean text files (py, js, sh, md, json, txt, yaml, yml, etc)
 # Skip .git directory to avoid breaking repository integrity
@@ -75,20 +75,18 @@ find . -type f ! -path './.git/*' \
   -e 's/[Cc]laude [Cc]omposer/Code Editor/g' \
   -e 's/claude[._-]code/opencode/gi' \
   -e 's/Claude/OpenCode/g' \
-  -e 's/CLAUDE\.md/AGENTS.md/g' 2>/dev/null || true
+  -e 's/CLAUDE\.md/AGENTS.md/g' \
+  -e 's/\.claude/.opencode/g' 2>/dev/null || true
 
 echo "   ✅ Cleaned upstream references"
 
-echo "-- Normalizing .claude → .opencode"
+echo "-- Path normalization (.claude → .opencode)"
+# Rename any legacy .claude directories to .opencode
 if [ -d ".claude" ]; then
-  echo "   Renaming .claude → .opencode"
-  mv ".claude" ".opencode" || echo "   ⚠️  Could not rename .claude"
-fi
-
-# Find and replace .claude references
-if grep -rl "\.claude" . 2>/dev/null | head -1 > /dev/null; then
-  echo "   Cleaning .claude references in files"
-  find . -type f -print0 2>/dev/null | xargs -0 sed -i 's/\.claude/.opencode/g' 2>/dev/null || true
+  echo "   Renaming .claude directory to .opencode"
+  mv ".claude" ".opencode" 2>/dev/null || echo "   ⚠️  Could not rename .claude directory"
+else
+  echo "   No legacy .claude directory found"
 fi
 echo "   ✅ Path normalization complete"
 
