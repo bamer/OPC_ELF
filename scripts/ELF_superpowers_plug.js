@@ -10,7 +10,6 @@
  * - session.deleted: Runs check-out at session end
  *
  * OpenCode Plugin System - Uses "tool.execute.before/after" hooks
- * (NOT Claude Code's "PreToolUse/PostToolUse")
  */
 
 import { tool } from "@opencode-ai/plugin";
@@ -19,8 +18,10 @@ import path from "path";
 import { existsSync, promises as fs } from "fs";
 
 const HOME_DIR = os.homedir();
+// OpenCode plugin dir (global)
 const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
-const ELF_DIR = process.env.ELF_BASE_PATH || path.join(OPENCODE_DIR, "emergent-learning");
+// ELF data dir (global, NOT affected by project-local .opencode)
+const ELF_DIR = process.env.ELF_BASE_PATH || path.join(HOME_DIR, ".opencode", "emergent-learning");
 const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
 const DASHBOARD_FALLBACK_DIR = path.join(ELF_DIR, "apps", "dashboard");
 const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");

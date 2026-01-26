@@ -1,0 +1,17 @@
+--- tools/scripts/start-watcher.sh.orig	2026-01-25 01:46:00.924377248 +0700
++++ tools/scripts/start-watcher.sh	2026-01-25 01:46:29.288868147 +0700
+@@ -31,10 +31,10 @@
+ fi
+ 
+ # Check for ANTHROPIC_API_KEY
+-if [ -z "$ANTHROPIC_API_KEY" ]; then
+-    echo "Error: ANTHROPIC_API_KEY environment variable is not set"
+-    echo "Please set it with: export ANTHROPIC_API_KEY='your-key-here'"
+-    exit 1
++# Check for ANTHROPIC_API_KEY or OpenAI-compatible base URL
++if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENCODE_WATCHER_BASE_URL" ] && [ -z "$OPENAI_BASE_URL" ]; then
++    echo "Error: ANTHROPIC_API_KEY or OPENCODE_WATCHER_BASE_URL is required"
++    echo "Example: export OPENCODE_WATCHER_BASE_URL='http://localhost:12134/v1'"
+ fi
+ 
+ # Change to ELF directory

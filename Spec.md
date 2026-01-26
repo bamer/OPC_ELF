@@ -3,14 +3,14 @@
 ## 1. Purpose
 
 OPC-ELF is a lightweight automation process that adapts the
-**Emergent-Learning-Framework_ELF** plugin from **Claude Code** to **OpenCode**.
+**Emergent-Learning-Framework_ELF** plugin from **Claude** to **OpenCode**.
 
 The objective is to automate a small set of repetitive and error‑prone manual steps,
 while keeping the workflow simple, transparent, and close to the original upstream
 project.
 
 This project intentionally avoids over‑engineering: most of the framework is already
-compatible between Claude and OpenCode.
+OpenCode-ready.
 
 ---
 
@@ -19,8 +19,8 @@ compatible between Claude and OpenCode.
 OPC-ELF automates the following tasks:
 
 1. Update the upstream ELF repository
-2. Rename Claude-specific paths and files to OpenCode equivalents
-3. Convert Claude Code hooks to OpenCode hooks
+2. Rename legacy paths and files to OpenCode equivalents
+3. Convert legacy hooks to OpenCode hooks
 4. Secure SQLite database migrations with backups
 5. Automate git check-in / check-out
 6. Run lightweight validation checks
@@ -63,13 +63,13 @@ Internally, the script performs the following steps in order.
 
 ---
 
-### 5.2 Claude → OpenCode Path Conversion
+### 5.2 Path Normalization
 
 Automatically rename and update:
 
-- `.claude` → `.openclaude`
+- `.claude` → `.opencode`
 - All path references pointing to `.claude`
-- Claude-specific directory names when applicable
+- Legacy directory names when applicable
 
 Replacements are deterministic and diff-friendly.
 
@@ -77,11 +77,11 @@ Replacements are deterministic and diff-friendly.
 
 ### 5.3 Hook Conversion
 
-Convert Claude Code hooks to OpenCode equivalents using a static mapping.
+Convert legacy hooks to OpenCode equivalents using a static mapping.
 
 Examples:
-- `claude_pre_run` → `opencode_pre_run`
-- `claude_post_run` → `opencode_post_run`
+- `pre_run` → `tool.execute.before`
+- `post_run` → `tool.execute.after`
 
 No abstraction layer is introduced.
 
@@ -106,7 +106,7 @@ Manual intervention is always possible.
 - Automatically commit converted changes
 - Use a standardized commit message:
   ```
-  opc-elf: sync Claude → OpenCode
+  opc-elf: sync to OpenCode
   ```
 
 ---
@@ -116,7 +116,7 @@ Manual intervention is always possible.
 Lightweight validation only:
 
 - Required directories exist
-- `.openclaude` is present
+- `.opencode` is present
 - No remaining `.claude` references
 - Optional dry-run execution
 
@@ -128,7 +128,7 @@ OPC-ELF does NOT aim to:
 - Redesign Emergent-Learning-Framework_ELF
 - Introduce a plugin framework
 - Add heavy testing or CI logic
-- Abstract Claude/OpenCode differences beyond what is required
+- Introduce unnecessary abstractions
 
 ---
 

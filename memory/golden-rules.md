@@ -106,9 +106,9 @@ These are proven principles with high confidence. They are ALWAYS loaded into co
 ---
 
 ## 11. No External APIs - Subscription Only
-> NEVER suggest external API calls (OpenAI, Anthropic API, etc.). This is a subscription-based app. Use Claude Code subagents via Task tool, covered by user's Max plan.
+> NEVER suggest external API calls (OpenAI, Anthropic API, etc.). This is a subscription-based app. Use OpenCode subagents via Task tool, covered by user's plan.
 
-**Why:** User pays for Max subscription. Suggesting API calls means extra costs, API keys, external dependencies. Everything must work through Claude Code's existing infrastructure (Task tool with haiku/sonnet/opus models). No exceptions.
+**Why:** User pays for their subscription. Suggesting API calls means extra costs, API keys, external dependencies. Everything must work through OpenCode's existing infrastructure (Task tool with available models). No exceptions.
 **Promoted:** 2025-12-13 (CEO direct order after repeated violations)
 **Validations:** CONSTITUTIONAL - immediate promotion by CEO decree
 

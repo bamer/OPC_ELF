@@ -10,7 +10,6 @@
  * - session.deleted: Runs check-out at session end
  *
  * OpenCode Plugin System - Uses "tool.execute.before/after" hooks
- * (NOT Claude Code's "PreToolUse/PostToolUse")
  */
 
 import { tool } from "@opencode-ai/plugin";
