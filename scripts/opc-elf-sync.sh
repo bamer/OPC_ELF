@@ -121,27 +121,8 @@ OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh --mod
   echo "   This may be due to database schema issues, attempting to repair..."
 }
 
-# Fix database schema if needed (handles old NULL values in NOT NULL columns)
-echo "-- Fixing database schema"
-if [ -f "$ELF_INSTALL_DIR/memory/index.db" ] || [ -f "$ELF_INSTALL_DIR/.env/.sqlite" ]; then
-  echo "   Applying schema fixes..."
-  python3 "$ROOT_DIR/scripts/fix-heuristics-schema.py" 2>&1 | grep -E "^(✅|⚠️|Creating)" || true
-  
-  # Retry seeding after repair
-  echo ""
-  echo "-- Retrying golden rules seeding after repair..."
-  if [ -f "$ELF_INSTALL_DIR/.venv/bin/python" ]; then
-    python_cmd="$ELF_INSTALL_DIR/.venv/bin/python"
-  else
-    python_cmd="python3"
-  fi
-  
-  if [ -f "$ELF_REPO/scripts/seed_golden_rules.py" ]; then
-    $python_cmd "$ELF_REPO/scripts/seed_golden_rules.py" --db-path "$ELF_INSTALL_DIR/memory/index.db" 2>&1 | grep -E "^(Found|✅|ERROR)" || true
-  fi
-else
-  echo "   Database not yet created"
-fi
+# Database schema is handled by ELF migrations automatically
+echo "-- Database setup handled by ELF migrations"
 
 echo "-- Installing OpenCode plugin"
 if [ ! -f "$PLUGIN_SRC" ]; then
