@@ -114,7 +114,7 @@ if [ ! -x "./install.sh" ]; then
 fi
 
 # Run installer but ignore seed_golden_rules errors (we'll fix DB and retry)
-OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh --mode merge || {
+OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh  || {
   installer_exit=$?
   echo ""
   echo "⚠️  Installer had issues (exit code: $installer_exit)"
@@ -123,6 +123,33 @@ OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh --mod
 
 # Database schema is handled by ELF migrations automatically
 echo "-- Database setup handled by ELF migrations"
+
+# Initialize database schema completely before migrations
+echo "-- Initializing database schema"
+if [ -f "$ELF_INSTALL_DIR/memory/index.db" ]; then
+  if [ -f "$ELF_INSTALL_DIR/.venv/bin/python" ]; then
+    python_cmd="$ELF_INSTALL_DIR/.venv/bin/python"
+  else
+    python_cmd="python3"
+  fi
+  
+  # Initialize peewee tables first (before migrations)
+  $python_cmd << 'PYEOF' 2>&1 | grep -E "(✅|Failed)" || true
+import sys
+sys.path.insert(0, "$ELF_REPO/src")
+from query.core import QuerySystem
+import asyncio
+
+try:
+    async def init():
+        qs = QuerySystem()
+        await qs.create()
+    asyncio.run(init())
+    print("✅ Database schema initialized")
+except Exception as e:
+    print(f"⚠️  Database initialization had issues: {e}")
+PYEOF
+fi
 
 echo "-- Installing OpenCode plugin"
 if [ ! -f "$PLUGIN_SRC" ]; then
