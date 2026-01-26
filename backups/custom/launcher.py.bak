@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
 Local watcher launcher for OpenAI-compatible endpoints.
+
+Runs watcher_loop.py prompt in a loop, sends it to a local OpenAI-compatible
+server, logs the response, and stops when STOP_FILE is present or watcher
+status indicates completion.
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -27,14 +33,17 @@ DEFAULT_BASE_URL = "http://localhost:12134/v1"
 DEFAULT_MODEL = "nemotron-v3-coder"
 DEFAULT_INTERVAL = 30
 
+
 def resolve_base_url() -> str:
     base_url = os.environ.get("OPENCODE_WATCHER_BASE_URL")
     if not base_url:
         base_url = os.environ.get("OPENAI_BASE_URL")
     return (base_url or DEFAULT_BASE_URL).rstrip("/")
 
+
 def resolve_model() -> str:
     return os.environ.get("OPENCODE_WATCHER_MODEL") or DEFAULT_MODEL
+
 
 def resolve_interval() -> int:
     value = os.environ.get("OPENCODE_WATCHER_INTERVAL")
@@ -45,6 +54,7 @@ def resolve_interval() -> int:
     except ValueError:
         return DEFAULT_INTERVAL
 
+
 def fetch_prompt() -> str:
     script_path = Path(__file__).with_name("watcher_loop.py")
     result = subprocess.run(
@@ -54,6 +64,7 @@ def fetch_prompt() -> str:
         text=True,
     )
     return result.stdout.strip()
+
 
 def call_openai(base_url: str, model: str, prompt: str) -> str:
     url = f"{base_url}/chat/completions"
@@ -83,9 +94,11 @@ def call_openai(base_url: str, model: str, prompt: str) -> str:
         raise RuntimeError("Watcher response missing choices")
     return choices[0].get("message", {}).get("content", "").strip()
 
+
 def append_log(text: str) -> None:
     COORDINATION_DIR.mkdir(parents=True, exist_ok=True)
     WATCHER_LOG.write_text(WATCHER_LOG.read_text() + text + "\n" if WATCHER_LOG.exists() else text + "\n")
+
 
 def should_stop(response: str) -> bool:
     if STOP_FILE.exists():
@@ -96,6 +109,7 @@ def should_stop(response: str) -> bool:
             if status in {"complete", "stopped"}:
                 return True
     return False
+
 
 def main() -> int:
     base_url = resolve_base_url()
@@ -112,6 +126,3 @@ def main() -> int:
         if should_stop(response) or once:
             return 0
         time.sleep(interval)
-
-if __name__ == "__main__":
-    raise SystemExit(main())
