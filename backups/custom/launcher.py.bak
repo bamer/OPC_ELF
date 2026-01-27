@@ -23,6 +23,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+
 from elf_paths import get_base_path
 
 COORDINATION_DIR = Path(os.environ.get("ELF_BASE_PATH", str(get_base_path()))) / ".coordination"

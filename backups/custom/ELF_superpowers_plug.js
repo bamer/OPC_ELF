@@ -16,13 +16,16 @@ import { tool } from "@opencode-ai/plugin";
 import os from "os";
 import path from "path";
 import { existsSync, promises as fs } from "fs";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
 const HOME_DIR = os.homedir();
 // OpenCode plugin dir (global)
 const OPENCODE_DIR = process.env.OPENCODE_DIR || path.join(HOME_DIR, ".opencode");
 // ELF data dir (global, NOT affected by project-local .opencode)
 const ELF_DIR = path.join(HOME_DIR, ".opencode", "emergent-learning");
-const DASHBOARD_DIR = path.join(ELF_DIR, "apps" , "dashboard");
+const DASHBOARD_DIR = path.join(ELF_DIR, "dashboard-app");
+const BACKEND_DIR = path.join(DASHBOARD_DIR, "backend");
 const TALKINHEAD_DIR = path.join(DASHBOARD_DIR, "TalkinHead");
 const HOOKS_DIR = path.join(ELF_DIR, "hooks", "learning-loop");
 const QUERY_DIR = path.join(ELF_DIR,"src", "query");
@@ -42,6 +45,25 @@ const pickPython = () => {
 };
 
 const PYTHON_CMD = pickPython();
+const execFileAsync = promisify(execFile);
+
+// Helper to execute Python scripts without bun
+async function runPythonScript(scriptPath, args = []) {
+  try {
+    const { stdout, stderr } = await execFileAsync(PYTHON_CMD, [scriptPath, ...args], {
+      encoding: 'utf-8',
+      maxBuffer: 10 * 1024 * 1024
+    });
+    return { exitCode: 0, stdout, stderr };
+  } catch (error) {
+    return {
+      exitCode: error.code || 1,
+      stdout: error.stdout || '',
+      stderr: error.stderr || error.message
+    };
+  }
+}
+
 async function loadElfCleanupConfig() {
   try {
     const data = await fs.readFile(ELF_CLEANUP_CONFIG_PATH, "utf8");
@@ -61,14 +83,14 @@ async function saveElfCleanupConfig(cfg) {
 const PRE_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "pre_tool_learning.py"))}`;
 const POST_TOOL_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(HOOKS_DIR, "post_tool_learning.py"))}`;
 
-// ELF command paths
-const CHECKIN_QUERY = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "query.py"))} --context`;
+// ELF script paths (for direct execution, not shell)
+const CHECKIN_SCRIPT_PATH = path.join(QUERY_DIR, "query.py");
+const CHECKOUT_SCRIPT_PATH = path.join(QUERY_DIR, "checkout.py");
 // Lifecycle scripts for Dashboard/IVI
 const DASHBOARD_START_SCRIPT = `bash -lc "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}"`;
 const TALKING_HEAD_IVI_START_SCRIPT = `bash -lc "${path.join(TALKINHEAD_DIR, "run-talkinhead.sh")}"`;
 const DASHBOARD_STOP_SCRIPT = "bash -lc \"pkill -f run-dashboard.sh || true\"";
 const TALKING_HEAD_IVI_STOP_SCRIPT = "bash -lc \"pkill -f TalkinHead || true\"";
-const CHECKOUT_SCRIPT = `${quote(PYTHON_CMD)} ${quote(path.join(QUERY_DIR, "checkout.py"))}`;
 
 // Track session state
 let sessionCheckinDone = false;
@@ -87,7 +109,66 @@ async function saveDashboardIvIlock(lock) {
   await fs.writeFile(DASHBOARD_IVI_LOCK_PATH, payload, 'utf8');
 }
 async function clearDashboardIvIlock() {
-  try { await fs.unlink(DASHBOARD_IVI_LOCK_PATH); } catch { /* ignore */ }
+   try { await fs.unlink(DASHBOARD_IVI_LOCK_PATH); } catch { /* ignore */ }
+}
+
+async function seedGoldenRules() {
+  try {
+    // Find seed script
+    const seedScript = path.join(ELF_DIR, "scripts", "seed_golden_rules.py");
+    if (!existsSync(seedScript)) {
+      return { success: false, message: `Seed script not found at ${seedScript}` };
+    }
+
+    // Run with ELF_BASE_PATH to seed the real database
+    const { execFile } = await import("child_process");
+    const { promisify } = await import("util");
+    const execAsync = promisify(execFile);
+
+    const result = await execAsync(PYTHON_CMD, [seedScript], {
+      cwd: ELF_DIR,
+      env: { ...process.env, ELF_BASE_PATH: ELF_DIR },
+      timeout: 30000
+    });
+
+    return { success: true, message: "Golden rules seeded to database" };
+  } catch (err) {
+    return { success: false, message: `Failed to seed golden rules: ${err.message}` };
+  }
+}
+
+async function startBackendServer(backendPort = 8888) {
+  try {
+    // Check if backend already running
+    const response = await fetch(`http://localhost:${backendPort}/api/stats`, { timeout: 1000 });
+    if (response.ok) {
+      return { success: true, message: `Backend already running on port ${backendPort}` };
+    }
+  } catch {
+    // Not running, start it
+  }
+
+  // Find backend venv python
+  const backendVenv = path.join(BACKEND_DIR, "venv", "bin", "python");
+  if (!existsSync(backendVenv)) {
+    return { success: false, message: `Backend venv not found at ${backendVenv}` };
+  }
+
+  try {
+    // Start backend in background (non-blocking)
+    // cd backend && venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8888
+    const { spawn } = await import("child_process");
+    const proc = spawn(backendVenv, ["-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", String(backendPort)], {
+      cwd: BACKEND_DIR,
+      detached: true,
+      stdio: "ignore"
+    });
+    proc.unref(); // Allow process to continue independently
+
+    return { success: true, message: `Backend startup initiated on port ${backendPort}` };
+  } catch (err) {
+    return { success: false, message: `Failed to start backend: ${err.message}` };
+  }
 }
 
 export const ELFHooksPlugin = async ({ client, $ }) => {
@@ -215,29 +296,46 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
         });
 
         try {
-          // Run check-in query to load context
-          const result = await $`${CHECKIN_QUERY}`.quiet();
+           // Run check-in query to load context
+           const result = await runPythonScript(CHECKIN_SCRIPT_PATH, ["--context"]);
 
         if (result.exitCode === 0) {
-            sessionCheckinDone = true;
-            await client.app.log({
-              service: "elf-hooks",
-              level: "info",
-              message: "Auto check-in completed - Context loaded"
-            });
-            // Idempotent start: only start if not already started for this session
-            try {
-              const lock = await loadDashboardIvIlock();
-              if (lock?.startedSessionId === sessionId) {
-                await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard/IVI already started for this session. Skipping start." });
-              } else {
-                const dashCmd = ` ${DASHBOARD_START_SCRIPT}; fi &`;
-                const thCmd = `${TALKING_HEAD_IVI_START_SCRIPT}; fi &`;
-                await $`${dashCmd}`.quiet();
-                await $`${thCmd}`.quiet();
-                await saveDashboardIvIlock({ startedSessionId: sessionId });
-                await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard and Talking Head IVI start commands issued (background)." });
-              }
+             sessionCheckinDone = true;
+             await client.app.log({
+               service: "elf-hooks",
+               level: "info",
+               message: "Auto check-in completed - Context loaded"
+             });
+
+             // Seed golden rules to database
+             const seedResult = await seedGoldenRules();
+             await client.app.log({
+               service: "elf-hooks",
+               level: "info",
+               message: `Golden rules: ${seedResult.message}`
+             });
+
+             // Idempotent start: only start if not already started for this session
+             try {
+               const lock = await loadDashboardIvIlock();
+               if (lock?.startedSessionId === sessionId) {
+                 await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard/IVI already started for this session. Skipping start." });
+               } else {
+                 // Start backend API server first
+                 const backendResult = await startBackendServer(8888);
+                 await client.app.log({
+                   service: "elf-hooks",
+                   level: "info",
+                   message: `Backend: ${backendResult.message}`
+                 });
+                 
+                 // Start frontend dashboard
+                 const dashCmd = `bash -lc "${path.join(DASHBOARD_DIR, "run-dashboard.sh")}" &`;
+                 await $`${dashCmd}`.quiet();
+                 
+                 await saveDashboardIvIlock({ startedSessionId: sessionId });
+                 await client.app.log({ service: "elf-hooks", level: "info", message: "Dashboard start commands issued (background). Backend API on :8888, Frontend on :3001" });
+               }
             } catch (err) {
               await client.app.log({
                 service: "elf-hooks",
@@ -333,7 +431,7 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
           }
 
           // Run checkout to capture learnings before compaction
-          const result = await $`${CHECKOUT_SCRIPT} --auto`.quiet();
+          const result = await runPythonScript(CHECKOUT_SCRIPT_PATH, ["--auto"]);
 
           await client.app.log({
             service: "elf-hooks",
@@ -399,7 +497,7 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
             }
 
             // Final checkout to ensure all learnings are captured
-            const result = await $`${CHECKOUT_SCRIPT} --auto --final`.quiet();
+             const result = await runPythonScript(CHECKOUT_SCRIPT_PATH, ["--auto", "--final"]);
 
             await client.app.log({
               service: "elf-hooks",
@@ -445,10 +543,14 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
         args: {},
         execute: async (args, ctx) => {
           try {
-            const result = await $`${CHECKIN_QUERY}`;
+            const result = await runPythonScript(CHECKIN_SCRIPT_PATH, ["--context"]);
             if (result.exitCode === 0) {
               sessionCheckinDone = true;
-              return "✅ ELF Check-In Complete\nContext, golden rules, and heuristics loaded from the building.";
+              
+              // Also seed golden rules to database
+              const seedResult = await seedGoldenRules();
+              
+              return `✅ ELF Check-In Complete\nContext, golden rules, and heuristics loaded from the building.\n${seedResult.message}`;
             } else {
               return `⚠️ Check-In exited with code: ${result.exitCode}\nCheck OpenCode logs for details.`;
             }
@@ -464,9 +566,9 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
           final: tool.schema.boolean().describe("Mark this as final checkout before session ends").optional()
         },
         execute: async (args, ctx) => {
-          const flags = args.final ? " --final" : "";
+          const flags = args.final ? ["--final"] : [];
           try {
-            const result = await $`${CHECKOUT_SCRIPT}${flags}`.quiet();
+            const result = await runPythonScript(CHECKOUT_SCRIPT_PATH, flags);
             return `✅ ELF Check-Out Complete\nLearnings recorded. (exit code: ${result.exitCode})`;
           } catch (error) {
             return `❌ Check-Out error: ${error.message}`;
@@ -502,10 +604,10 @@ export const ELFHooksPlugin = async ({ client, $ }) => {
    - Check-out pending: ${sessionCheckinDone ? "Yes (auto on end)" : "N/A"}
 
 🔧 Hook Configuration:
-   - Pre-tool: ${PRE_TOOL_SCRIPT}
-   - Post-tool: ${POST_TOOL_SCRIPT}
-   - Check-in: ${CHECKIN_QUERY}
-   - Check-out: ${CHECKOUT_SCRIPT}
+    - Pre-tool: ${PRE_TOOL_SCRIPT}
+    - Post-tool: ${POST_TOOL_SCRIPT}
+    - Check-in: ${CHECKIN_SCRIPT_PATH}
+    - Check-out: ${CHECKOUT_SCRIPT_PATH}
 
 📊 Auto Check-In/Check-Out:
    - ✅ session.created → Auto check-in

@@ -7,8 +7,9 @@
 ## Commands
 - **Main installer** (use this): `bash opencode_elf_install.sh` (interactive, validates, diagnoses, fixes, syncs)
 - **Validate setup**: `./scripts/validate-setup.sh` (optional, for troubleshooting)
-- **Sync** (update + backup + clean + install + plugin): `./scripts/opc-elf-sync.sh`
-  - Performs git fetch, resets to upstream, cleans Claude references, applies patches, installs plugin, validates cleanup
+- **Sync** (update + backup + clean + install + plugin symlink): `./scripts/opc-elf-sync.sh`
+  - Performs git fetch, resets to upstream, cleans Claude references, applies patches, symlinks plugin (lazy-activated), validates cleanup
+  - Plugin auto-installs in ELF directory, symlinked from ~/.opencode/plugins (no contamination until /elf_activate)
 - **Clean installed Claude refs** (if .opencode/emergent-learning still has Claude paths): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/clean-installed-claude-refs.sh`
 - **Fix database** (if integrity issues): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/fix-database.sh`
   - Repairs NULL values in NOT NULL columns, backs up database

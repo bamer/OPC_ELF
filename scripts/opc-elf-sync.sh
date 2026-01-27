@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ELF_REPO="$ROOT_DIR/Emergent-Learning-Framework_ELF"
-PLUGIN_SRC="$ROOT_DIR/scripts/ELF_superpowers_plug.js"
 
 OPENCODE_DIR="${OPENCODE_DIR:-$HOME/.opencode}"
 OPENCODE_PLUGIN_DIR="$OPENCODE_DIR/plugins"
@@ -146,16 +145,22 @@ OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh  || {
   echo "   ⚠️  Installer had issues (exit code: $installer_exit)"
 }
 
-# Step 5: Install OpenCode Plugin to plugins/ directory
+# Step 5: Install OpenCode Plugin via symlink
 echo "-- Plugin Phase: OpenCode Integration"
-if [ ! -f "$PLUGIN_SRC" ]; then
-  echo "ERROR: ELF_superpowers_plug.js not found at $PLUGIN_SRC"
-  exit 1
+# Plugin should be in ELF directory, symlinked from .opencode/plugins
+PLUGIN_ELF_SRC="$ELF_INSTALL_DIR/plugins/ELF_superpowers.js"
+
+if [ ! -f "$PLUGIN_ELF_SRC" ]; then
+  echo "   ⚠️  Plugin not yet in ELF directory (will be on next sync)"
+  echo "   Expected at: $PLUGIN_ELF_SRC"
+else
+  mkdir -p "$OPENCODE_PLUGIN_DIR"
+  # Remove old copies if they exist
+  rm -f "$OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js" "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
+  # Create symlink from ELF's plugin directory
+  ln -sf "$PLUGIN_ELF_SRC" "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
+  echo "   ✅ Plugin symlinked from: $PLUGIN_ELF_SRC"
 fi
-mkdir -p "$OPENCODE_PLUGIN_DIR"
-cp -f "$PLUGIN_SRC" "$OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js"
-echo "   Plugin installed to: $OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js"
-echo "   ELF_BASE_PATH will auto-resolve to: $ELF_INSTALL_DIR"
 
 # Step 6: Validate Installation
 echo "-- Validation Phase: Final Checks"
@@ -167,10 +172,10 @@ else
   echo "   ✅ ELF installed at: $ELF_INSTALL_DIR"
 fi
 
-if [ ! -f "$OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js" ]; then
-  echo "   ⚠️  OpenCode plugin not installed at: $OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js"
+if [ ! -L "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js" ] && [ ! -f "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js" ]; then
+  echo "   ⚠️  OpenCode plugin not found at: $OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
 else
-  echo "   ✅ Plugin installed at: $OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js"
+  echo "   ✅ Plugin available at: $OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
 fi
 
 # Validation Report: Cleanup verification
