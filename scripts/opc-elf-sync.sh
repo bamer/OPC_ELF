@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ELF_REPO="$ROOT_DIR/Emergent-Learning-Framework_ELF"
+PLUGIN_SRC="$ROOT_DIR/scripts/ELF_superpowers.js"
 
 OPENCODE_DIR="${OPENCODE_DIR:-$HOME/.opencode}"
 OPENCODE_PLUGIN_DIR="$OPENCODE_DIR/plugins"
@@ -145,21 +146,23 @@ OPENCODE_DIR="$OPENCODE_DIR" ELF_BASE_PATH="$ELF_INSTALL_DIR" ./install.sh  || {
   echo "   ⚠️  Installer had issues (exit code: $installer_exit)"
 }
 
-# Step 5: Install OpenCode Plugin via symlink
+# Step 5: Install OpenCode Plugin to ELF root + create symlink
 echo "-- Plugin Phase: OpenCode Integration"
-# Plugin should be in ELF directory, symlinked from .opencode/plugins
-PLUGIN_ELF_SRC="$ELF_INSTALL_DIR/plugins/ELF_superpowers.js"
 
-if [ ! -f "$PLUGIN_ELF_SRC" ]; then
-  echo "   ⚠️  Plugin not yet in ELF directory (will be on next sync)"
-  echo "   Expected at: $PLUGIN_ELF_SRC"
+PLUGIN_ELF_DST="$ELF_INSTALL_DIR/ELF_superpowers.js"
+
+if [ ! -f "$PLUGIN_SRC" ]; then
+  echo "   ⚠️  Plugin source not found at: $PLUGIN_SRC"
 else
+  # Install plugin to ELF root directory
+  cp -f "$PLUGIN_SRC" "$PLUGIN_ELF_DST"
+  echo "   ✅ Plugin installed to: $PLUGIN_ELF_DST"
+  
+  # Create symlink in .opencode/plugins
   mkdir -p "$OPENCODE_PLUGIN_DIR"
-  # Remove old copies if they exist
-  rm -f "$OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js" "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
-  # Create symlink from ELF's plugin directory
-  ln -sf "$PLUGIN_ELF_SRC" "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
-  echo "   ✅ Plugin symlinked from: $PLUGIN_ELF_SRC"
+  rm -f "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js" "$OPENCODE_PLUGIN_DIR/ELF_superpowers_plug.js"
+  ln -sf "$PLUGIN_ELF_DST" "$OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
+  echo "   ✅ Plugin symlinked to: $OPENCODE_PLUGIN_DIR/ELF_superpowers.js"
 fi
 
 # Step 6: Validate Installation
