@@ -5,19 +5,15 @@
 - Automatically removes Claude references from upstream files during sync.
 
 ## Commands
-- **Main installer** (use this): `bash opencode_elf_install.sh` (interactive, validates, diagnoses, fixes, syncs)
-- **Validate setup**: `./scripts/validate-setup.sh` (optional, for troubleshooting)
-- **Sync** (update + backup + clean + install + plugin symlink): `./scripts/opc-elf-sync.sh`
-  - Performs git fetch, resets to upstream, cleans Claude references, applies patches, symlinks plugin (lazy-activated), validates cleanup
-  - Plugin auto-installs in ELF directory, symlinked from ~/.opencode/plugins (no contamination until /elf_activate)
-- **Clean installed Claude refs** (if .opencode/emergent-learning still has Claude paths): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/clean-installed-claude-refs.sh`
-- **Fix database** (if integrity issues): `OPENCODE_DIR=$HOME/.opencode ELF_BASE_PATH=$HOME/.opencode/emergent-learning bash ./scripts/fix-database.sh`
-  - Repairs NULL values in NOT NULL columns, backs up database
-- **Preserve customizations**: `./scripts/preserve-customizations.sh {backup|restore|patch}`
-- **Regenerate patches** (if upstream changed): `./scripts/regenerate-patches.sh {launcher.py|start-watcher.sh}`
-- **Reset ELF repo** (if branches diverged): `./scripts/reset-elf-repo.sh`
-  - Discards local ELF changes, resets to clean upstream state
-- Upstream install (from ELF repo): `cd Emergent-Learning-Framework_ELF && ./install.sh`
+- **Main installer** (use this): `bash opencode_elf_install.sh` (interactive, full setup)
+- **Sync** (regular updates): `./scripts/opc-elf-sync.sh`
+  - Resets to origin/main (always fresh)
+  - Backs up existing DBs
+  - Installs ELF with ELF_BASE_PATH env var
+  - Installs + symlinks plugin
+  - Verifies all components
+  - No patches needed (ELF_BASE_PATH handles paths automatically)
+- Upstream install (if needed): `cd Emergent-Learning-Framework_ELF && ELF_BASE_PATH=$HOME/.opencode/emergent-learning ./install.sh`
 - Tests (upstream): `cd Emergent-Learning-Framework_ELF && make test`
 - Lint (upstream): `cd Emergent-Learning-Framework_ELF && make lint`
 
