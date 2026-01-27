@@ -1,159 +1,64 @@
-# OpenCode-ELF Integration
+# OpenCode + ELF Integration
 
-Automated synchronization and patching for the **Emergent-Learning-Framework_ELF** with **OpenCode** compatibility.
+Clean, minimal integration of the Emergent Learning Framework with OpenCode.
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 bash opencode_elf_install.sh
 ```
 
-That's it. One interactive command that:
-- ✅ Validates your setup
-- ✅ Checks git state
-- ✅ Fixes divergent branches if needed
-- ✅ Syncs with upstream
-- ✅ Removes Claude references
-- ✅ Applies OpenCode patches
-- ✅ Installs the OpenCode plugin
+Then in OpenCode, call `/elf_activate` in any session to enable ELF hooks.
 
-## What It Does
+## What This Does
 
-Each run:
+- **Installs ELF** to `~/.opencode/emergent-learning` with proper path resolution
+- **Adds plugin** for automatic learning from tool outputs  
+- **Lazy activation** - no contamination until you explicitly enable it
+- **Auto backup** of existing data before updates
 
-1. **Backs up** custom files (pre-update)
-2. **Fetches** latest from upstream ELF repository
-3. **Restores** your customizations (post-update)
-4. **Applies** OpenCode-specific patches
-5. **Cleans** all Claude references (text, files, paths)
-6. **Backs up** databases with timestamp
-7. **Installs** ELF with merged customizations
-8. **Installs** OpenCode plugin
-9. **Validates** everything is correct
+## Documentation
 
-## Files
+- **[WORKFLOW.md](WORKFLOW.md)** - Installation and sync workflow
+- **[AGENTS.md](AGENTS.md)** - Project directives and commands
 
-| What | Where | Purpose |
-|------|-------|---------|
-| **Installer** | `opencode_elf_install.sh` | One-command interactive setup |
-| **Validation** | `scripts/validate-setup.sh` | Pre-flight system checks |
-| **Diagnosis** | `scripts/diagnose-git-state.sh` | Check git health |
-| **Reset** | `scripts/reset-elf-repo.sh` | Fix divergent branches |
-| **Main sync** | `scripts/opc-elf-sync.sh` | Core synchronization |
-| **Guides** | `QUICK_START.md` | Getting started |
-| | `SETUP_CHECKLIST.md` | Manual verification |
-| | `AGENTS.md` | Commands & troubleshooting |
-
-## Environment
-
-Optional (defaults work fine):
-
-```bash
-export OPENCODE_DIR=/custom/path/.opencode
-export ELF_BASE_PATH=/custom/path/elf
-./opencode_elf_install.sh
-```
-
-## Safe to Use
-
-- ✅ Multiple runs safe (already-applied patches skipped)
-- ✅ Dry-run for patches (never breaks files)
-- ✅ Timestamped backups for recovery
-- ✅ Git-based rollback possible
-- ✅ Non-blocking errors (continues on patch issues)
-
-## System State
-
-Current setup: **100% Operational**
-
-- ✅ All scripts working
-- ✅ All patches verified
-- ✅ All documentation complete
-- ✅ Ready for production use
-
-## Troubleshooting
-
-```bash
-# Check system status
-./scripts/validate-setup.sh
-
-# Check git health
-./scripts/diagnose-git-state.sh
-
-# Fix divergent branches
-./scripts/reset-elf-repo.sh
-
-# View detailed guides
-cat QUICK_START.md
-cat AGENTS.md
-cat SETUP_CHECKLIST.md
-```
-
-## Architecture
+## Repository Structure
 
 ```
-OpenCode-ELF
-├── Sync Strategy: git fetch + reset --hard (reliable)
-├── Patch System: GNU patch with --dry-run (safe)
-├── Cleanup: sed for text refs + rename for files (fast)
-├── Backup: Timestamped per-run + custom files (recoverable)
-├── Installation: ELF ./install.sh --mode merge (integrated)
-└── Plugin: OpenCode-compatible (no Claude refs)
+├── opencode_elf_install.sh      # Interactive installer
+├── scripts/
+│   ├── opc-elf-sync.sh          # Sync script (reset → backup → install → plugin → verify)
+│   ├── ELF_superpowers.js       # OpenCode plugin source
+│   └── patches-optional/        # Future enhancement patches
+├── Emergent-Learning-Framework_ELF/  # Upstream ELF repo (always clean)
+└── backups/                     # Auto-generated backups
 ```
+
+## How It Works
+
+1. **Always Fresh** - ELF repo reset to upstream on each sync
+2. **Paths via Env** - `ELF_BASE_PATH` env var handles all path resolution (no patches needed)
+3. **Plugin Separate** - OpenCode plugin lives in OPC_ELF, installed to ELF root, symlinked
+4. **Lazy Hooks** - Plugin inactive until `/elf_activate` called
+5. **Data Safe** - Databases backed up before install
 
 ## For Developers
 
-See:
-- `IMPLEMENTATION_SUMMARY.md` - Full architecture
-- `Spec.md` - Technical details
-- `AGENTS.md` - Commands and style
-- `VERIFICATION_REPORT.md` - What's been tested
-- `WORKFLOW_GUIDE.md` - Step-by-step workflow explanation
-- `WORKFLOW_FLOWCHART.md` - Visual workflow diagrams
-
-## Next Steps
-
+To update:
 ```bash
-# First time
-./opencode_elf_install.sh
-
-# Regular updates
-./opencode_elf_install.sh
-
-# Check git health anytime
-./scripts/diagnose-git-state.sh
-
-# Manual intervention if needed
-./scripts/reset-elf-repo.sh
+./scripts/opc-elf-sync.sh
 ```
 
-## Understanding the Workflow
+To test Python scripts directly:
+```bash
+cd ~/.opencode/emergent-learning
+ELF_BASE_PATH=$PWD .venv/bin/python src/query/query.py --context
+```
 
-For a comprehensive understanding of how OpenCode-ELF works:
+## Key Design Principles
 
-1. **Read the simplified workflow guide**: `WORKFLOW_GUIDE.md`
-   - Clear 6-step process explanation
-   - Simplified component descriptions
-   - Focused troubleshooting examples
-
-2. **View the simplified flowcharts**: `WORKFLOW_FLOWCHART.md`
-   - Clean Mermaid diagrams showing the streamlined process
-   - Simplified component interaction diagrams
-   - Straightforward state diagrams
-
-3. **Quick reference**: The simplified workflow follows this sequence:
-   ```
-   Backup → Fetch → Cleanup → Install → Plugin → Validate
-   ```
-
-## License & Attribution
-
-This wrapper integrates:
-- **Emergent-Learning-Framework_ELF** - [Spacehunterz/ELF](https://github.com/Spacehunterz/Emergent-Learning-Framework_ELF)
-- **OpenCode** - Local AI code editor integration
-
-## Status
-
-🟢 **Ready for Production**
-
-All features implemented, tested, and documented. The new workflow guides provide comprehensive documentation to make the system more understandable and easier to use.
+- ✅ Zero contamination until explicitly enabled
+- ✅ No patches or post-processing (ELF_BASE_PATH handles it)
+- ✅ Plugin independent of ELF codebase
+- ✅ Data always preserved
+- ✅ Repo always in clean state

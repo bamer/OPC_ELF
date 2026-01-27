@@ -2,15 +2,16 @@
  * ELF Superpowers Hook Plugin for OpenCode.ai
  *
  * Minimal, non-invasive hooks for ELF learning system.
- * Auto-activates on first /elf_activate command, stays dormant otherwise.
+ * Activates only on /elf_activate command.
  *
- * Lives at: ~/.opencode/emergent-learning/ELF_superpowers.js
- * Symlinked from: ~/.opencode/plugins/ELF_superpowers.js
+ * Location: ~/.opencode/emergent-learning/ELF_superpowers.js
+ * Symlink: ~/.opencode/plugins/ELF_superpowers.js → ELF root
  *
  * Features:
- * - Pre/post-tool learning hooks
+ * - Pre/post-tool learning hooks (auto-extract [LEARNED:] markers)
  * - Auto check-in/check-out on session lifecycle
- * - Lazy activation (no contamination until enabled)
+ * - Lazy activation (no contamination until /elf_activate)
+ * - Uses Python subprocess for ELF scripts (no bun dependency)
  */
 
 import { tool } from "@opencode-ai/plugin";
@@ -42,7 +43,12 @@ const pickPython = () => {
 const PYTHON_CMD = pickPython();
 const execFileAsync = promisify(execFile);
 
-// Helper to execute Python scripts
+/**
+ * Execute Python script directly (no shell/bun dependency)
+ * 
+ * Uses Node's execFile to spawn Python process directly with proper
+ * environment. Captures stdout/stderr for logging and error handling.
+ */
 async function runPythonScript(scriptPath, args = []) {
   try {
     const { stdout, stderr } = await execFileAsync(PYTHON_CMD, [scriptPath, ...args], {
