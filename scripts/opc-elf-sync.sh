@@ -64,6 +64,21 @@ git reset --hard origin/main || {
 
 print_ok "Repository reset to upstream"
 
+# Apply custom patches
+if [ -d "$ROOT_DIR/scripts/patches" ]; then
+    for patch_file in "$ROOT_DIR/scripts/patches"/*.patch; do
+        if [ -f "$patch_file" ]; then
+            patch_name="$(basename "$patch_file")"
+            echo "Applying patch: $patch_name"
+            if patch -p1 --dry-run < "$patch_file" > /dev/null 2>&1; then
+                patch -p1 < "$patch_file" || echo "Warning: Patch $patch_name failed"
+            else
+                echo "Warning: Patch $patch_name would fail, skipping"
+            fi
+        fi
+    done
+fi
+
 # ============ STEP 2: Backup Data ============
 print_header "STEP 2: Backup Existing Data"
 

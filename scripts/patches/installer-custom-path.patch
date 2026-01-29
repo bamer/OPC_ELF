@@ -1,0 +1,16 @@
+--- a/tools/setup/install.sh
++++ b/tools/setup/install.sh
+@@ -14,7 +14,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ ELF_DIR_DEFAULT="$CLAUDE_DIR/emergent-learning"
+ ELF_DIR="${ELF_BASE_PATH:-$ELF_DIR_DEFAULT}"
+ # SCRIPT_DIR is tools/setup, so repo root is two levels up
+-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
++# Only set REPO_ROOT if not doing a custom install (ELF_BASE_PATH set to non-default)
++if [ "$ELF_DIR" = "$ELF_DIR_DEFAULT" ]; then
++    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
++else
++    REPO_ROOT=""
++fi
+ BASE_DIR="$ELF_DIR"
+ 
+ MODE="interactive"
