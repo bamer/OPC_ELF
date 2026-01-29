@@ -19,7 +19,7 @@
 
 ## GitHub-Style Patches
 - Patch directory: `scripts/patches/` contains GitHub-style patch files
-- `src-claude-cleanup.patch`: Converts all Claude references to OpenCode paths (`.claude` → `.opencode`, env vars, etc)
+- `src-claude-cleanup.patch`: Converts all Claude references to OpenCode paths (`.opencode` → `.opencode`, env vars, etc)
 - `launcher-openai.patch`: Adds OpenAI-compatible launcher for watcher
 - `start-watcher-openai.patch`: Adds OpenAI/OpenCode watcher support
 - `opencode-plugin.patch`: Adds OpenCode plugin with ELF hooks
